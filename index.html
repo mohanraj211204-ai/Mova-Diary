@@ -1,0 +1,2779 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MOVA — Your Private Diary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&family=Bebas+Neue&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* ===================== CSS VARIABLES ===================== */
+:root {
+  --bg: #09090f;
+  --surface: #0f0f1a;
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --gold: #c9a84c;
+  --gold-light: #e8cc80;
+  --gold-dim: rgba(201,168,76,0.15);
+  --crimson: #9b2335;
+  --teal: #2ec4b6;
+  --text: #f0ede6;
+  --text-muted: rgba(240,237,230,0.45);
+  --text-dim: rgba(240,237,230,0.25);
+  --error: #ff4757;
+  --success: #2ed573;
+  --radius: 16px;
+  --font-display: 'Bebas Neue', sans-serif;
+  --font-serif: 'Cormorant Garamond', serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+
+/* ===================== RESET & BASE ===================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===================== ANIMATED BG ===================== */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ===================== SCREENS ===================== */
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+.screen.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* ===================== GLASS PANEL ===================== */
+.panel {
+  background: rgba(15,15,26,0.85);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 48px;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  width: 90%;
+  max-width: 480px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06);
+  animation: panelIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  top: -1px; left: -1px; right: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+@keyframes panelIn {
+  from { transform: translateY(24px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ===================== LOGO ===================== */
+.logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.logo-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
+  font-size: 24px;
+  box-shadow: 0 0 40px rgba(201,168,76,0.4);
+}
+.logo h1 {
+  font-family: var(--font-display);
+  font-size: 36px;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.logo p {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: var(--font-serif);
+  font-style: italic;
+}
+
+/* ===================== FORM ELEMENTS ===================== */
+.form-group {
+  margin-bottom: 16px;
+  position: relative;
+}
+.form-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.form-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 13px 16px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  transition: all 0.3s ease;
+  outline: none;
+}
+.form-input:focus {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.05);
+  box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+}
+.form-input::placeholder { color: var(--text-dim); }
+
+/* File upload */
+.file-upload {
+  position: relative;
+  width: 100%;
+  border: 1.5px dashed var(--glass-border);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: rgba(255,255,255,0.02);
+}
+.file-upload:hover, .file-upload.has-file {
+  border-color: var(--gold);
+  background: var(--gold-dim);
+}
+.file-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-upload-icon { font-size: 24px; margin-bottom: 6px; }
+.file-upload-text { font-size: 12px; color: var(--text-muted); }
+.file-upload.has-file .file-upload-text { color: var(--gold); }
+
+/* Profile pic */
+.avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.avatar-preview {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  object-fit: cover;
+  background: var(--glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+/* ===================== BUTTONS ===================== */
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+.btn-gold {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: #0a0808;
+}
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(201,168,76,0.4);
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+.btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+.btn-danger {
+  background: linear-gradient(135deg, #9b2335, #c0392b);
+  color: white;
+}
+.btn-sm {
+  width: auto;
+  padding: 8px 16px;
+  font-size: 12px;
+  border-radius: 8px;
+}
+.btn:active { transform: scale(0.98); }
+.btn-row { display: flex; gap: 10px; margin-top: 20px; }
+.btn-row .btn { margin-top: 0; }
+
+/* ===================== PIN STEPS ===================== */
+.pin-step {
+  display: none;
+}
+.pin-step.active { display: block; }
+
+.step-indicator {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 28px;
+  justify-content: center;
+}
+.step-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--glass-border);
+  transition: all 0.3s;
+}
+.step-dot.done { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+.step-dot.active { background: var(--gold-light); transform: scale(1.4); }
+
+.step-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.step-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 20px; }
+
+/* PIN Pad */
+.pin-display {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--glass-border);
+  transition: all 0.2s;
+}
+.pin-dot.filled {
+  background: var(--gold);
+  border-color: var(--gold);
+  box-shadow: 0 0 10px var(--gold);
+}
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 240px;
+  margin: 0 auto;
+}
+.pin-key {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  font-size: 18px;
+  font-family: var(--font-body);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pin-key:hover { background: var(--gold-dim); border-color: var(--gold); }
+.pin-key:active { transform: scale(0.92); }
+
+/* ===================== ATTEMPTS / LOCK ===================== */
+.attempt-bar {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.attempt-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  transition: all 0.3s;
+}
+.attempt-dot.used { background: var(--error); }
+
+.lock-screen {
+  text-align: center;
+  padding: 20px;
+}
+.lock-icon { font-size: 56px; margin-bottom: 12px; }
+.lock-countdown {
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: var(--gold);
+  letter-spacing: 4px;
+}
+
+/* ===================== TOAST ===================== */
+.toast-container {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.toast {
+  background: rgba(20,20,35,0.95);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  padding: 12px 24px;
+  font-size: 13px;
+  backdrop-filter: blur(12px);
+  animation: toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.toast.success { border-color: rgba(46,213,115,0.3); color: var(--success); }
+.toast.error { border-color: rgba(255,71,87,0.3); color: var(--error); }
+.toast.info { border-color: rgba(201,168,76,0.3); color: var(--gold); }
+@keyframes toastIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ===================== DIARY SCREEN ===================== */
+#diary-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: none;
+  flex-direction: column;
+}
+#diary-screen.active { display: flex; }
+
+/* SIDEBAR */
+.sidebar {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: 280px;
+  background: rgba(10,10,18,0.95);
+  border-right: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  transform: translateX(-100%);
+  transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+}
+.sidebar.open { transform: translateX(0); }
+.sidebar-logo {
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.sidebar-logo h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.sidebar-logo p { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.user-card {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.user-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  object-fit: cover;
+  background: var(--gold-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.user-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.user-info h3 { font-size: 14px; font-weight: 500; }
+.user-info p { font-size: 11px; color: var(--text-muted); }
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+.sidebar-nav::-webkit-scrollbar { width: 3px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--glass-border); }
+
+.nav-section-title {
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 12px 12px 6px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  margin-bottom: 2px;
+}
+.nav-item:hover { background: var(--glass); color: var(--text); }
+.nav-item.active { background: var(--gold-dim); color: var(--gold); }
+.nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--gold);
+  color: #000;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 100px;
+  font-weight: 600;
+}
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* MAIN AREA */
+.main-area {
+  margin-left: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* TOPBAR */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(9,9,15,0.9);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.menu-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.menu-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+.topbar-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 400;
+  flex: 1;
+}
+.topbar-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: var(--font-serif);
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  flex: 1;
+  max-width: 300px;
+}
+.search-bar input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  width: 100%;
+}
+.search-bar input::placeholder { color: var(--text-dim); }
+
+/* ===================== VIEWS ===================== */
+.view { display: none; flex: 1; overflow: auto; }
+.view.active { display: flex; flex-direction: column; }
+
+/* ===================== HOME VIEW ===================== */
+.home-header {
+  padding: 40px 32px 24px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.home-greeting {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 300;
+  margin-bottom: 4px;
+}
+.home-greeting span { color: var(--gold); font-style: italic; }
+.home-sub { font-size: 13px; color: var(--text-muted); }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  padding: 24px 32px;
+}
+.stat-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s;
+}
+.stat-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 32px;
+  letter-spacing: 2px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* MOOD TRACKER */
+.mood-section {
+  padding: 0 32px 24px;
+}
+.section-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.mood-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mood-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  padding: 8px 18px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-body);
+}
+.mood-btn:hover, .mood-btn.selected {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: var(--gold-dim);
+}
+.mood-emoji { font-size: 18px; }
+
+/* RECENT ENTRIES */
+.entries-section { padding: 0 32px 32px; }
+.entry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+/* ===================== ENTRY CARD ===================== */
+.entry-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 22px;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.entry-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.entry-card:hover { border-color: rgba(201,168,76,0.3); transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
+.entry-card:hover::before { opacity: 1; }
+
+.entry-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.entry-date {
+  font-size: 11px;
+  color: var(--gold);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.entry-mood-badge { font-size: 18px; }
+.entry-title {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 400;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.entry-preview {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.entry-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+.entry-words { font-size: 11px; color: var(--text-dim); }
+.entry-actions { display: flex; gap: 6px; }
+.icon-btn {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--glass-border);
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.icon-btn:hover { border-color: var(--gold); color: var(--gold); }
+.icon-btn.danger:hover { border-color: var(--error); color: var(--error); }
+
+/* Empty state */
+.empty-state {
+  padding: 60px 32px;
+  text-align: center;
+}
+.empty-icon { font-size: 56px; margin-bottom: 16px; }
+.empty-title { font-family: var(--font-serif); font-size: 24px; margin-bottom: 8px; }
+.empty-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+/* ===================== WRITE VIEW ===================== */
+.write-area {
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 16px;
+}
+.write-meta {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.write-mood-select {
+  display: flex;
+  gap: 8px;
+}
+.write-mood-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.write-mood-btn:hover, .write-mood-btn.selected {
+  border-color: var(--gold);
+  background: var(--gold-dim);
+  transform: scale(1.1);
+}
+
+.title-input {
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--glass-border);
+  padding: 12px 0;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.3s;
+}
+.title-input:focus { border-color: var(--gold); }
+.title-input::placeholder { color: var(--text-dim); }
+
+.write-toolbar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+.toolbar-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 7px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: var(--font-body);
+}
+.toolbar-btn:hover { border-color: var(--gold); color: var(--gold); }
+.toolbar-btn.active-tool { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+
+.diary-textarea {
+  flex: 1;
+  min-height: 360px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.9;
+  resize: none;
+  width: 100%;
+}
+.diary-textarea::placeholder { color: var(--text-dim); }
+
+.write-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--glass-border);
+}
+.word-count { font-size: 12px; color: var(--text-muted); font-family: var(--font-serif); font-style: italic; }
+.autosave-indicator { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+.autosave-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* Voice btn */
+.voice-btn {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  width: 44px; height: 44px;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+.voice-btn.recording {
+  border-color: var(--error);
+  color: var(--error);
+  background: rgba(255,71,87,0.1);
+  animation: recordPulse 1s infinite;
+}
+@keyframes recordPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,71,87,0.4)} 50%{box-shadow:0 0 0 10px rgba(255,71,87,0)} }
+
+/* ===================== TIMELINE VIEW ===================== */
+.timeline { padding: 32px; }
+.timeline-group { margin-bottom: 32px; }
+.timeline-month {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 300;
+  color: var(--gold);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--gold-dim);
+}
+.timeline-item {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+.timeline-dot-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  padding-top: 4px;
+}
+.timeline-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  background: var(--bg);
+  flex-shrink: 0;
+}
+.timeline-line {
+  width: 1px;
+  flex: 1;
+  background: var(--glass-border);
+  min-height: 40px;
+}
+.timeline-content {
+  flex: 1;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s;
+  margin-bottom: 12px;
+}
+.timeline-content:hover { border-color: rgba(201,168,76,0.3); transform: translateX(4px); }
+.timeline-day { font-size: 11px; color: var(--gold); letter-spacing: 1px; margin-bottom: 4px; }
+.timeline-title { font-family: var(--font-serif); font-size: 16px; margin-bottom: 4px; }
+.timeline-preview { font-size: 12px; color: var(--text-muted); }
+
+/* ===================== ANALYTICS VIEW ===================== */
+.analytics-area { padding: 32px; }
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.chart-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+}
+.chart-title { font-family: var(--font-serif); font-size: 16px; margin-bottom: 16px; color: var(--text-muted); }
+.mood-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 100px;
+}
+.mood-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.mood-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, var(--gold), rgba(201,168,76,0.3));
+  transition: height 0.8s cubic-bezier(0.4,0,0.2,1);
+  min-height: 4px;
+}
+.mood-bar-label { font-size: 16px; }
+.mood-bar-count { font-size: 10px; color: var(--text-muted); }
+
+.streak-display {
+  text-align: center;
+  padding: 20px;
+}
+.streak-num {
+  font-family: var(--font-display);
+  font-size: 72px;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.streak-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 2px; }
+
+/* Writing heatmap */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.heat-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--glass-border);
+  transition: background 0.3s;
+}
+.heat-cell.l1 { background: rgba(201,168,76,0.2); }
+.heat-cell.l2 { background: rgba(201,168,76,0.4); }
+.heat-cell.l3 { background: rgba(201,168,76,0.7); }
+.heat-cell.l4 { background: var(--gold); }
+
+/* ===================== OVERLAY ===================== */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(4px);
+}
+.overlay.active { opacity: 1; pointer-events: all; }
+
+/* ===================== MODAL ===================== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  backdrop-filter: blur(8px);
+}
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: rgba(15,15,26,0.97);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 36px;
+  max-width: 440px;
+  width: 90%;
+  animation: modalIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes modalIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.modal-title { font-family: var(--font-serif); font-size: 24px; margin-bottom: 8px; }
+.modal-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+
+/* ===================== SETTINGS VIEW ===================== */
+.settings-area { padding: 32px; max-width: 600px; }
+.settings-section { margin-bottom: 32px; }
+.settings-title { font-family: var(--font-serif); font-size: 20px; margin-bottom: 16px; color: var(--text-muted); }
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.settings-item-info h4 { font-size: 14px; margin-bottom: 2px; }
+.settings-item-info p { font-size: 12px; color: var(--text-muted); }
+.toggle {
+  width: 44px; height: 24px;
+  border-radius: 100px;
+  background: var(--glass-border);
+  cursor: pointer;
+  position: relative;
+  transition: background 0.3s;
+}
+.toggle.on { background: var(--gold); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.3s;
+}
+.toggle.on::after { transform: translateX(20px); }
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 768px) {
+  .panel { padding: 32px 24px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .chart-grid { grid-template-columns: 1fr; }
+  .home-header { padding: 24px 20px; }
+  .stats-row, .mood-section, .entries-section { padding-left: 20px; padding-right: 20px; }
+  .write-area, .timeline, .analytics-area, .settings-area { padding: 20px; }
+  .home-greeting { font-size: 24px; }
+}
+
+/* ===================== SCROLLBAR ===================== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 100px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gold); }
+
+/* ===================== TRANSITIONS ===================== */
+.fade-in { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* ===================== LOCK SCREEN OVERLAY ===================== */
+#lock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  background: var(--bg);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#lock-overlay.active { display: flex; }
+</style>
+</head>
+<body>
+
+<!-- BACKGROUND CANVAS -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ==================== SIGNUP SCREEN ==================== -->
+<div id="signup-screen" class="screen active">
+  <div class="panel" style="max-width:520px;max-height:90vh;overflow-y:auto">
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      <h1>MOVA</h1>
+      <p>Your Private Diary</p>
+    </div>
+
+    <div id="signup-step1">
+      <div style="font-family:var(--font-serif);font-size:20px;margin-bottom:6px">Create your identity</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:24px">Your story begins here</div>
+
+      <div class="form-group">
+        <div class="avatar-upload">
+          <div class="avatar-preview" id="avatarPreviewBox">📷</div>
+          <div style="flex:1">
+            <label class="form-label">Profile Photo</label>
+            <div class="file-upload" id="avatarUploadBox">
+              <input type="file" accept="image/*" id="profilePic" onchange="previewAvatar(this)">
+              <div class="file-upload-icon">🖼️</div>
+              <div class="file-upload-text">Tap to upload</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" id="su_name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input class="form-input" id="su_username" placeholder="@username">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Date of Birth</label>
+          <input class="form-input" id="su_dob" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mobile</label>
+          <input class="form-input" id="su_mobile" placeholder="+91 9999..." type="tel">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-gold" onclick="goToSetPin()">Continue to Security Setup →</button>
+      </div>
+      <div style="text-align:center;margin-top:16px;font-size:13px;color:var(--text-muted)">
+        Already have an account? <span style="color:var(--gold);cursor:pointer" onclick="showLogin()">Sign In</span>
+      </div>
+    </div>
+
+    <div id="signup-step2" style="display:none">
+      <div class="step-indicator">
+        <div class="step-dot done" id="sdot1"></div>
+        <div class="step-dot" id="sdot2"></div>
+        <div class="step-dot" id="sdot3"></div>
+      </div>
+
+      <!-- Step 1: PIN -->
+      <div class="pin-step active" id="setup-pin1">
+        <div class="step-title">Set Your 4-Digit PIN</div>
+        <div class="step-sub">This is the first layer of your security vault</div>
+        <div class="pin-display">
+          <div class="pin-dot" id="sd1"></div>
+          <div class="pin-dot" id="sd2"></div>
+          <div class="pin-dot" id="sd3"></div>
+          <div class="pin-dot" id="sd4"></div>
+        </div>
+        <div class="pin-pad" id="pinpad-setup1"></div>
+      </div>
+
+      <!-- Step 2: Secret Name -->
+      <div class="pin-step" id="setup-pin2">
+        <div class="step-title">Your Secret Name</div>
+        <div class="step-sub">A personal keyword only you know — this is layer two</div>
+        <div class="form-group">
+          <input class="form-input" id="su_secretname" placeholder="e.g. Moonlight, Phoenix..." style="text-align:center;font-size:18px;font-family:var(--font-serif)">
+        </div>
+        <button class="btn btn-gold" onclick="setupStep2Next()">Continue</button>
+      </div>
+
+      <!-- Step 3: Image key -->
+      <div class="pin-step" id="setup-pin3">
+        <div class="step-title">Your Image Key</div>
+        <div class="step-sub">Upload a personal image — the final layer. Keep it safe.</div>
+        <div class="file-upload" id="img-key-upload">
+          <input type="file" accept="image/*" id="su_imgkey" onchange="imgKeySelected(this)">
+          <div class="file-upload-icon">🔑</div>
+          <div class="file-upload-text" id="imgkey-text">Upload your secret image</div>
+        </div>
+        <div style="height:16px"></div>
+        <button class="btn btn-gold" onclick="createAccount()">Create My Diary →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== LOGIN SCREEN ==================== -->
+<div id="login-screen" class="screen">
+  <div class="panel">
+    <div class="logo">
+      <div class="logo-icon">✦</div>
+      <h1>MOVA</h1>
+      <p>Unlock Your Diary</p>
+    </div>
+
+    <div id="login-locked" style="display:none">
+      <div class="lock-screen">
+        <div class="lock-icon">🔒</div>
+        <div style="font-family:var(--font-serif);font-size:20px;margin-bottom:8px">Too Many Attempts</div>
+        <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Diary locked for</div>
+        <div class="lock-countdown" id="lock-countdown">03:00</div>
+      </div>
+    </div>
+
+    <div id="login-form">
+      <div class="attempt-bar" id="attempt-bar">
+        <div class="attempt-dot" id="at1"></div>
+        <div class="attempt-dot" id="at2"></div>
+        <div class="attempt-dot" id="at3"></div>
+      </div>
+
+      <div class="pin-step active" id="login-pin1">
+        <div class="step-title">Enter PIN</div>
+        <div class="step-sub">Step 1 of 3 — Your 4-digit security code</div>
+        <div class="pin-display">
+          <div class="pin-dot" id="ld1"></div>
+          <div class="pin-dot" id="ld2"></div>
+          <div class="pin-dot" id="ld3"></div>
+          <div class="pin-dot" id="ld4"></div>
+        </div>
+        <div class="pin-pad" id="pinpad-login"></div>
+      </div>
+
+      <div class="pin-step" id="login-pin2">
+        <div class="step-title">Secret Name</div>
+        <div class="step-sub">Step 2 of 3 — Your personal keyword</div>
+        <div class="form-group">
+          <input class="form-input" id="login_secretname" placeholder="Enter your secret name" style="text-align:center;font-size:18px;font-family:var(--font-serif)">
+        </div>
+        <button class="btn btn-gold" onclick="loginStep2()">Verify</button>
+      </div>
+
+      <div class="pin-step" id="login-pin3">
+        <div class="step-title">Image Verification</div>
+        <div class="step-sub">Step 3 of 3 — Upload your secret image key</div>
+        <div class="file-upload" id="login-img-box">
+          <input type="file" accept="image/*" id="login_imgkey" onchange="loginImgSelected(this)">
+          <div class="file-upload-icon">🔑</div>
+          <div class="file-upload-text" id="login-img-text">Upload your image key</div>
+        </div>
+        <div style="height:16px"></div>
+        <button class="btn btn-gold" onclick="loginFinal()">Unlock Diary →</button>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;font-size:13px;color:var(--text-muted)">
+      New here? <span style="color:var(--gold);cursor:pointer" onclick="showSignup()">Create Account</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DIARY SCREEN ==================== -->
+<div id="diary-screen">
+  <!-- SIDEBAR OVERLAY -->
+  <div class="overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h2>MOVA</h2>
+      <p>Your Private Diary</p>
+    </div>
+    <div class="user-card">
+      <div class="user-avatar" id="sb-avatar">👤</div>
+      <div class="user-info">
+        <h3 id="sb-name">—</h3>
+        <p id="sb-username">@—</p>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-title">Main</div>
+      <div class="nav-item active" onclick="switchView('home',this)">
+        <span class="nav-icon">🏠</span> Home
+      </div>
+      <div class="nav-item" onclick="switchView('write',this)">
+        <span class="nav-icon">✍️</span> Write
+      </div>
+      <div class="nav-item" onclick="switchView('entries',this)">
+        <span class="nav-icon">📖</span> All Entries
+        <span class="nav-badge" id="entries-badge">0</span>
+      </div>
+      <div class="nav-section-title">Explore</div>
+      <div class="nav-item" onclick="switchView('timeline',this)">
+        <span class="nav-icon">🕰️</span> Timeline
+      </div>
+      <div class="nav-item" onclick="switchView('search',this)">
+        <span class="nav-icon">🔍</span> Search
+      </div>
+      <div class="nav-item" onclick="switchView('analytics',this)">
+        <span class="nav-icon">📊</span> Analytics
+      </div>
+      <div class="nav-section-title">Account</div>
+      <div class="nav-item" onclick="switchView('settings',this)">
+        <span class="nav-icon">⚙️</span> Settings
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn btn-ghost btn-sm" onclick="exportAllPDF()">📄 Export All as PDF</button>
+      <button class="btn btn-danger btn-sm" onclick="lockDiary()">🔒 Lock Diary</button>
+    </div>
+  </nav>
+
+  <!-- MAIN AREA -->
+  <div class="main-area" id="main-area">
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">Home</div>
+      <div class="search-bar" id="topbar-search" style="display:none">
+        <span>🔍</span>
+        <input type="text" placeholder="Search your memories..." id="global-search" oninput="handleSearch(this.value)">
+      </div>
+      <div class="topbar-date" id="topbar-date"></div>
+    </div>
+
+    <!-- HOME VIEW -->
+    <div class="view active" id="view-home">
+      <div class="home-header fade-in">
+        <div class="home-greeting">Good <span id="greeting-time">morning</span>, <span id="greeting-name">friend</span> ✦</div>
+        <div class="home-sub" id="home-quote">Every day is a new page in your story.</div>
+      </div>
+
+      <div class="stats-row fade-in">
+        <div class="stat-card">
+          <div class="stat-num" id="stat-entries">0</div>
+          <div class="stat-label">Entries</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-words">0</div>
+          <div class="stat-label">Words</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-streak">0</div>
+          <div class="stat-label">Day Streak</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num" id="stat-days">0</div>
+          <div class="stat-label">Days Active</div>
+        </div>
+      </div>
+
+      <div class="mood-section fade-in">
+        <div class="section-title">How are you feeling today?</div>
+        <div class="mood-row" id="home-mood-row">
+          <div class="mood-btn" onclick="setTodayMood('😊','Happy')"><span class="mood-emoji">😊</span> Happy</div>
+          <div class="mood-btn" onclick="setTodayMood('😢','Sad')"><span class="mood-emoji">😢</span> Sad</div>
+          <div class="mood-btn" onclick="setTodayMood('😤','Angry')"><span class="mood-emoji">😤</span> Angry</div>
+          <div class="mood-btn" onclick="setTodayMood('😌','Calm')"><span class="mood-emoji">😌</span> Calm</div>
+          <div class="mood-btn" onclick="setTodayMood('🤩','Excited')"><span class="mood-emoji">🤩</span> Excited</div>
+          <div class="mood-btn" onclick="setTodayMood('😰','Anxious')"><span class="mood-emoji">😰</span> Anxious</div>
+          <div class="mood-btn" onclick="setTodayMood('🥱','Tired')"><span class="mood-emoji">🥱</span> Tired</div>
+          <div class="mood-btn" onclick="setTodayMood('🤔','Thoughtful')"><span class="mood-emoji">🤔</span> Thoughtful</div>
+        </div>
+      </div>
+
+      <div class="entries-section fade-in">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="section-title" style="margin-bottom:0">Recent Entries</div>
+          <button class="btn btn-ghost btn-sm" onclick="switchView('write',null)">+ New Entry</button>
+        </div>
+        <div class="entry-grid" id="home-entries"></div>
+      </div>
+    </div>
+
+    <!-- WRITE VIEW -->
+    <div class="view" id="view-write">
+      <div class="write-area fade-in">
+        <div class="write-meta">
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="clearWrite(false)">Clear</button>
+            <button class="btn btn-gold btn-sm" onclick="saveEntry()">Save Entry ✦</button>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);font-family:var(--font-serif);font-style:italic" id="write-date-display"></div>
+          <div class="write-mood-select">
+            <div class="write-mood-btn selected" id="wm-😊" onclick="selectWriteMood('😊')">😊</div>
+            <div class="write-mood-btn" id="wm-😢" onclick="selectWriteMood('😢')">😢</div>
+            <div class="write-mood-btn" id="wm-😤" onclick="selectWriteMood('😤')">😤</div>
+            <div class="write-mood-btn" id="wm-😌" onclick="selectWriteMood('😌')">😌</div>
+            <div class="write-mood-btn" id="wm-🤩" onclick="selectWriteMood('🤩')">🤩</div>
+            <div class="write-mood-btn" id="wm-😰" onclick="selectWriteMood('😰')">😰</div>
+            <div class="write-mood-btn" id="wm-🥱" onclick="selectWriteMood('🥱')">🥱</div>
+          </div>
+          <button class="voice-btn" id="voice-btn" onclick="toggleVoice()" title="Voice to Text">🎤</button>
+        </div>
+
+        <input class="title-input" id="entry-title" placeholder="Title your memory...">
+
+        <div class="write-toolbar">
+          <button class="toolbar-btn" onclick="insertText('**','**')"><b>B</b></button>
+          <button class="toolbar-btn" onclick="insertText('_','_')"><i>I</i></button>
+          <button class="toolbar-btn" onclick="insertText('\n— ','')">Quote</button>
+          <button class="toolbar-btn" onclick="insertText('\n• ','')">• List</button>
+          <button class="toolbar-btn" onclick="insertText('\n\n---\n\n','')">Divider</button>
+          <button class="toolbar-btn" onclick="insertDate()">📅 Date</button>
+          <button class="toolbar-btn active-tool" id="autosave-toggle" onclick="toggleAutosave()">⚡ Autosave ON</button>
+        </div>
+
+        <textarea class="diary-textarea" id="diary-textarea" placeholder="Let your thoughts flow freely..." oninput="onWriteInput()"></textarea>
+
+        <div class="write-footer">
+          <div class="word-count" id="write-word-count">0 words · 0 characters</div>
+          <div class="autosave-indicator" id="autosave-indicator">
+            <div class="autosave-dot"></div>
+            <span>Draft saved</span>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+
+    <!-- ALL ENTRIES VIEW -->
+    <div class="view" id="view-entries">
+      <div style="padding:32px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px" class="fade-in">
+          <div>
+            <div style="font-family:var(--font-serif);font-size:28px;font-weight:300">All Entries</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Your complete story</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <select id="filter-mood" onchange="renderAllEntries()" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:var(--font-body);font-size:13px">
+              <option value="">All Moods</option>
+              <option value="😊">😊 Happy</option>
+              <option value="😢">😢 Sad</option>
+              <option value="😤">😤 Angry</option>
+              <option value="😌">😌 Calm</option>
+              <option value="🤩">🤩 Excited</option>
+              <option value="😰">😰 Anxious</option>
+              <option value="🥱">🥱 Tired</option>
+              <option value="🤔">🤔 Thoughtful</option>
+            </select>
+            <select id="sort-entries" onchange="renderAllEntries()" style="background:var(--glass);border:1px solid var(--glass-border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:var(--font-body);font-size:13px">
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="longest">Longest</option>
+            </select>
+          </div>
+        </div>
+        <div class="entry-grid fade-in" id="all-entries-grid"></div>
+      </div>
+    </div>
+
+    <!-- TIMELINE VIEW -->
+    <div class="view" id="view-timeline">
+      <div class="timeline fade-in" id="timeline-content"></div>
+    </div>
+
+    <!-- SEARCH VIEW -->
+    <div class="view" id="view-search">
+      <div style="padding:32px">
+        <div style="font-family:var(--font-serif);font-size:28px;font-weight:300;margin-bottom:6px" class="fade-in">Search Memories</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:24px" class="fade-in">Find anything from your diary</div>
+        <div class="search-bar fade-in" style="max-width:100%;margin-bottom:24px;padding:14px 20px">
+          <span>🔍</span>
+          <input type="text" placeholder="Type to search your entries..." id="search-input" oninput="handleSearch(this.value)" style="font-size:15px">
+        </div>
+        <div class="entry-grid" id="search-results"></div>
+        <div id="search-empty" style="text-align:center;padding:40px;color:var(--text-muted);font-family:var(--font-serif);font-size:18px;display:none">
+          No memories found ✦
+        </div>
+      </div>
+    </div>
+
+    <!-- ANALYTICS VIEW -->
+    <div class="view" id="view-analytics">
+      <div class="analytics-area fade-in">
+        <div style="font-family:var(--font-serif);font-size:28px;font-weight:300;margin-bottom:6px">Your Story in Numbers</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:24px">Insights from your writing journey</div>
+
+        <div class="chart-grid">
+          <div class="chart-card">
+            <div class="chart-title">Mood Distribution</div>
+            <div class="mood-chart-bars" id="mood-chart"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Writing Streak</div>
+            <div class="streak-display">
+              <div class="streak-num" id="analytics-streak">0</div>
+              <div class="streak-label">Day Streak 🔥</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:12px" id="best-streak-label">Best: 0 days</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom:16px">
+          <div class="chart-title">Writing Activity — Last 7 Weeks</div>
+          <div class="heatmap-grid" id="heatmap"></div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="chart-card">
+            <div class="chart-title">Most Productive</div>
+            <div id="top-days" style="display:flex;flex-direction:column;gap:8px"></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Words Per Entry (Avg)</div>
+            <div style="text-align:center;padding:20px">
+              <div style="font-family:var(--font-display);font-size:64px;letter-spacing:2px;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text" id="avg-words">0</div>
+              <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:2px">words average</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS VIEW -->
+    <div class="view" id="view-settings">
+      <div class="settings-area fade-in">
+        <div style="font-family:var(--font-serif);font-size:28px;font-weight:300;margin-bottom:6px">Settings</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:28px">Manage your SoulScript account</div>
+
+        <!-- PROFILE SECTION -->
+        <div class="settings-section">
+          <div class="settings-title">Profile</div>
+          <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:16px">
+            <div style="display:flex;align-items:center;gap:16px;width:100%">
+              <div class="user-avatar" id="settings-avatar" style="width:60px;height:60px;font-size:22px;border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">👤</div>
+              <div style="flex:1">
+                <div style="font-size:15px;font-weight:500" id="settings-name-display">—</div>
+                <div style="font-size:12px;color:var(--text-muted)" id="settings-username-display">@—</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" onclick="openEditProfileModal()">✏️ Edit Profile</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">Security</div>
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <h4>Change PIN</h4>
+              <p>Update your 4-digit security code</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="showChangePinModal()">Change</button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <h4>Session Lock</h4>
+              <p>Lock diary after 30 minutes of inactivity</p>
+            </div>
+            <div class="toggle on" id="toggle-session" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">Writing</div>
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <h4>Auto-Save</h4>
+              <p>Automatically save drafts every 30 seconds</p>
+            </div>
+            <div class="toggle on" id="toggle-autosave" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <h4>Daily Reminder</h4>
+              <p>Browser notification to write your daily entry</p>
+            </div>
+            <div class="toggle" id="toggle-reminder" onclick="toggleReminder(this)"></div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-title">Data</div>
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <h4>Export as PDF</h4>
+              <p>Download all your entries as a beautiful PDF</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="exportAllPDF()">Export</button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-info">
+              <h4>Backup Data</h4>
+              <p>Download a JSON backup of all your data</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="backupData()">Backup</button>
+          </div>
+          <div class="settings-item">
+            <div class="settings-item-info" style="color:var(--error)">
+              <h4>Delete All Data</h4>
+              <p>Permanently erase all your diary entries</p>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="confirmDeleteAll()">Delete</button>
+          </div>
+        </div>
+
+        <!-- DANGER ZONE -->
+        <div class="settings-section">
+          <div class="settings-title" style="color:var(--error)">Danger Zone</div>
+          <div class="settings-item" style="border-color:rgba(255,71,87,0.2);background:rgba(255,71,87,0.04)">
+            <div class="settings-item-info">
+              <h4 style="color:var(--error)">Delete Account</h4>
+              <p>Permanently delete your account and all data. This cannot be undone.</p>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="openDeleteAccountModal()">Delete Account</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ENTRY READ MODAL ==================== -->
+<div class="modal-backdrop" id="read-modal">
+  <div class="modal" style="max-width:600px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px">
+      <div>
+        <div style="font-size:11px;color:var(--gold);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px" id="modal-date"></div>
+        <div class="modal-title" id="modal-title"></div>
+      </div>
+      <div style="font-size:28px" id="modal-mood"></div>
+    </div>
+    <div style="font-family:var(--font-serif);font-size:16px;line-height:1.9;color:rgba(240,237,230,0.85);white-space:pre-wrap" id="modal-body"></div>
+    <div style="display:flex;gap:10px;margin-top:24px;flex-wrap:wrap">
+      <button class="btn btn-gold btn-sm" onclick="editEntry(currentReadId)">✏️ Edit</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportEntryPDF(currentReadId)">📄 Export PDF</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteEntry(currentReadId)">🗑️ Delete</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="closeModal('read-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DELETE CONFIRM MODAL ==================== -->
+<div class="modal-backdrop" id="delete-modal">
+  <div class="modal">
+    <div class="modal-title">Delete this entry?</div>
+    <div class="modal-sub">This cannot be undone. Your memory will be lost forever.</div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete Forever</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== EDIT PROFILE MODAL ==================== -->
+<div class="modal-backdrop" id="edit-profile-modal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title">Edit Profile</div>
+    <div class="modal-sub">Update your name, username, or photo</div>
+
+    <!-- Avatar -->
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <div id="ep-avatar-preview" style="width:72px;height:72px;border-radius:50%;border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0;background:var(--gold-dim)">👤</div>
+      <div style="flex:1">
+        <label class="form-label">Profile Photo</label>
+        <div class="file-upload" id="ep-avatar-upload-box" style="padding:12px">
+          <input type="file" accept="image/*" id="ep-avatar-file" onchange="previewEditAvatar(this)">
+          <div class="file-upload-icon" style="font-size:16px">🖼️</div>
+          <div class="file-upload-text" id="ep-avatar-upload-text">Click to change photo</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" id="ep-name" placeholder="Your name">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Username</label>
+        <input class="form-input" id="ep-username" placeholder="@username">
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeModal('edit-profile-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveProfile()">Save Changes ✦</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DELETE ACCOUNT MODAL ==================== -->
+<div class="modal-backdrop" id="delete-account-modal">
+  <div class="modal">
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+      <div class="modal-title" style="color:var(--error)">Delete Account?</div>
+      <div class="modal-sub">This will permanently erase your account, all diary entries, and every piece of data. There is no recovery.</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Enter your 4-digit PIN to confirm</label>
+      <div class="pin-display" style="margin-bottom:16px">
+        <div class="pin-dot" id="da-d1"></div>
+        <div class="pin-dot" id="da-d2"></div>
+        <div class="pin-dot" id="da-d3"></div>
+        <div class="pin-dot" id="da-d4"></div>
+      </div>
+      <div class="pin-pad" id="pinpad-deleteaccount" style="max-width:220px;margin:0 auto 16px"></div>
+    </div>
+    <div id="da-error" style="font-size:12px;color:var(--error);text-align:center;margin-bottom:12px;min-height:16px"></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="closeModal('delete-account-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="executeDeleteAccount()">☠️ Delete Forever</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- LOCK OVERLAY (after inactivity) -->
+<div id="lock-overlay" class="active">
+  <!-- handled programmatically -->
+</div>
+
+<script>
+/* ============================================================
+   SOULSCRIPT — PRODUCTION GRADE DIARY APP
+   ============================================================ */
+
+// ===================== STATE =====================
+let STATE = {
+  user: null,
+  entries: [],
+  currentMood: '😊',
+  editingId: null,
+  autosave: true,
+  autosaveTimer: null,
+  loginAttempts: 0,
+  lockTimer: null,
+  setupPIN: '',
+  loginPIN: '',
+  setupStep: 1,
+  loginStep: 1,
+  imgKeyData: '',
+  setupImgKeyData: '',
+  isListening: false,
+  recognition: null,
+  inactivityTimer: null,
+  voiceTimer: null,
+};
+let currentReadId = null;
+let deleteTargetId = null;
+const MAX_ATTEMPTS = 3;
+const LOCK_DURATION = 3 * 60; // 3 min in seconds
+const INACTIVITY_LIMIT = 30 * 60 * 1000; // 30 min
+
+// ===================== BACKGROUND CANVAS =====================
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: Math.random() * innerWidth,
+      y: Math.random() * innerHeight,
+      r: Math.random() * 1.5 + 0.3,
+      dx: (Math.random() - 0.5) * 0.2,
+      dy: (Math.random() - 0.5) * 0.2,
+      opacity: Math.random() * 0.4 + 0.1
+    });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(201,168,76,${p.opacity})`;
+      ctx.fill();
+      p.x += p.dx; p.y += p.dy;
+      if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ===================== ENCRYPTION (XOR) =====================
+function xorEncrypt(text, key = 'SoulScript2025') {
+  return text.split('').map((c, i) => String.fromCharCode(c.charCodeAt(0) ^ key.charCodeAt(i % key.length))).join('');
+}
+function encryptData(data) { return btoa(unescape(encodeURIComponent(xorEncrypt(JSON.stringify(data))))); }
+function decryptData(enc) {
+  try { return JSON.parse(xorEncrypt(decodeURIComponent(escape(atob(enc))))); }
+  catch { return null; }
+}
+
+// ===================== STORAGE =====================
+function saveToStorage() {
+  if (!STATE.user) return;
+  localStorage.setItem('ss_entries', encryptData(STATE.entries));
+}
+function loadFromStorage() {
+  const raw = localStorage.getItem('ss_entries');
+  if (raw) { const d = decryptData(raw); if (d) STATE.entries = d; }
+}
+
+// ===================== UTILS =====================
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  const icons = { success: '✅', error: '❌', info: '✦' };
+  el.innerHTML = `<span>${icons[type]||'✦'}</span>${msg}`;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(20px)'; setTimeout(() => el.remove(), 400); }, 3000);
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2); }
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+function formatShort(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+}
+function countWords(str) { return str.trim().split(/\s+/).filter(w => w).length; }
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'morning';
+  if (h < 17) return 'afternoon';
+  return 'evening';
+}
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const s = document.getElementById(id);
+  if (s) s.classList.add('active');
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ===================== TOPBAR DATE =====================
+function updateTopbarDate() {
+  const now = new Date();
+  document.getElementById('topbar-date').textContent = now.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+}
+setInterval(updateTopbarDate, 60000);
+updateTopbarDate();
+
+// ===================== PIN PAD BUILDER =====================
+function buildPinPad(containerId, onPress) {
+  const pad = document.getElementById(containerId);
+  if (!pad) return;
+  pad.innerHTML = '';
+  [1,2,3,4,5,6,7,8,9,'⌫',0,'✓'].forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'pin-key';
+    btn.textContent = k;
+    btn.onclick = () => onPress(String(k));
+    pad.appendChild(btn);
+  });
+}
+
+// ===================== SETUP PIN =====================
+let setupPINvalue = '';
+function buildSetupPad() {
+  buildPinPad('pinpad-setup1', (k) => {
+    if (k === '⌫') { setupPINvalue = setupPINvalue.slice(0,-1); }
+    else if (k === '✓') { if (setupPINvalue.length === 4) { STATE.setupPIN = setupPINvalue; moveToSetupStep(2); } else toast('Enter exactly 4 digits','error'); return; }
+    else if (setupPINvalue.length < 4) setupPINvalue += k;
+    updateSetupDots();
+  });
+}
+function updateSetupDots() {
+  for (let i=1;i<=4;i++) {
+    document.getElementById(`sd${i}`)?.classList.toggle('filled', i <= setupPINvalue.length);
+  }
+}
+function moveToSetupStep(n) {
+  document.querySelectorAll('#signup-step2 .pin-step').forEach(s => s.classList.remove('active'));
+  document.getElementById(`setup-pin${n}`)?.classList.add('active');
+  STATE.setupStep = n;
+  updateSetupStepDots(n);
+}
+function updateSetupStepDots(n) {
+  const dots = document.querySelectorAll('.step-dot');
+  dots.forEach((d, i) => {
+    d.classList.remove('active','done');
+    if (i < n-1) d.classList.add('done');
+    else if (i === n-1) d.classList.add('active');
+  });
+}
+function setupStep2Next() {
+  const name = document.getElementById('su_secretname').value.trim();
+  if (!name) return toast('Enter your secret name','error');
+  STATE.secretName = name;
+  moveToSetupStep(3);
+}
+function imgKeySelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    STATE.setupImgKeyData = reader.result;
+    const box = document.getElementById('img-key-upload');
+    if (box) { box.classList.add('has-file'); document.getElementById('imgkey-text').textContent = '🔑 ' + file.name; }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ===================== SIGNUP =====================
+function previewAvatar(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const box = document.getElementById('avatarPreviewBox');
+    box.innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    STATE.avatarData = reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+function goToSetPin() {
+  const name = document.getElementById('su_name').value.trim();
+  const username = document.getElementById('su_username').value.trim();
+  if (!name || !username) return toast('Please fill name and username','error');
+  STATE.signupMeta = {
+    name, username,
+    dob: document.getElementById('su_dob').value,
+    mobile: document.getElementById('su_mobile').value,
+  };
+  document.getElementById('signup-step1').style.display = 'none';
+  document.getElementById('signup-step2').style.display = 'block';
+  setupPINvalue = '';
+  buildSetupPad();
+  updateSetupStepDots(1);
+}
+function createAccount() {
+  if (!STATE.setupPIN || STATE.setupPIN.length !== 4) return toast('PIN required','error');
+  if (!STATE.secretName) return toast('Secret name required','error');
+  if (!STATE.setupImgKeyData) return toast('Image key required','error');
+  const user = {
+    ...STATE.signupMeta,
+    pin: STATE.setupPIN,
+    secretName: STATE.secretName,
+    imgKey: STATE.setupImgKeyData,
+    avatar: STATE.avatarData || null,
+    createdAt: new Date().toISOString()
+  };
+  localStorage.setItem('ss_user', encryptData(user));
+  STATE.user = user;
+  STATE.entries = [];
+  saveToStorage();
+  toast('Account created! Welcome to SoulScript 🎉','success');
+  setTimeout(() => {
+    showLoginScreen();
+  }, 1500);
+}
+
+// ===================== LOGIN =====================
+let loginPINvalue = '';
+let loginAttempts = 0;
+function showLogin() { showLoginScreen(); }
+function showSignup() { showScreen('signup-screen'); }
+function showLoginScreen() {
+  showScreen('login-screen');
+  loginPINvalue = '';
+  STATE.loginStep = 1;
+  showLoginStep(1);
+  buildLoginPad();
+  checkLockStatus();
+}
+function buildLoginPad() {
+  buildPinPad('pinpad-login', (k) => {
+    if (k === '⌫') { loginPINvalue = loginPINvalue.slice(0,-1); }
+    else if (k === '✓') { verifyLoginPIN(); return; }
+    else if (loginPINvalue.length < 4) loginPINvalue += k;
+    updateLoginDots();
+  });
+}
+function updateLoginDots() {
+  for (let i=1;i<=4;i++) {
+    document.getElementById(`ld${i}`)?.classList.toggle('filled', i <= loginPINvalue.length);
+  }
+}
+function showLoginStep(n) {
+  document.querySelectorAll('#login-form .pin-step').forEach(s => s.classList.remove('active'));
+  document.getElementById(`login-pin${n}`)?.classList.add('active');
+  STATE.loginStep = n;
+}
+function verifyLoginPIN() {
+  const user = decryptData(localStorage.getItem('ss_user'));
+  if (!user) return toast('No account found','error');
+  if (loginPINvalue === user.pin) {
+    showLoginStep(2);
+  } else {
+    failedAttempt();
+  }
+}
+function loginStep2() {
+  const user = decryptData(localStorage.getItem('ss_user'));
+  const name = document.getElementById('login_secretname').value.trim();
+  if (name === user.secretName) {
+    showLoginStep(3);
+  } else {
+    failedAttempt();
+  }
+}
+function loginImgSelected(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    STATE.loginImgData = reader.result;
+    const box = document.getElementById('login-img-box');
+    if (box) { box.classList.add('has-file'); document.getElementById('login-img-text').textContent = '🔑 ' + file.name; }
+  };
+  reader.readAsDataURL(file);
+}
+function loginFinal() {
+  const user = decryptData(localStorage.getItem('ss_user'));
+  if (!STATE.loginImgData) return toast('Please upload your image key','error');
+  if (STATE.loginImgData === user.imgKey) {
+    loginAttempts = 0;
+    localStorage.removeItem('ss_lock');
+    STATE.user = user;
+    loadFromStorage();
+    initDiary();
+    toast('Welcome back ✦', 'success');
+    document.getElementById('login-screen').classList.remove('active');
+    const ds = document.getElementById('diary-screen');
+    ds.classList.add('active');
+    document.getElementById('lock-overlay').classList.remove('active');
+    resetInactivityTimer();
+  } else {
+    failedAttempt();
+  }
+}
+function failedAttempt() {
+  loginAttempts++;
+  toast(`Wrong credentials (${loginAttempts}/${MAX_ATTEMPTS})`, 'error');
+  updateAttemptDots();
+  showLoginStep(1);
+  loginPINvalue = '';
+  updateLoginDots();
+  if (loginAttempts >= MAX_ATTEMPTS) {
+    lockAccount();
+  }
+}
+function updateAttemptDots() {
+  for (let i=1;i<=3;i++) {
+    document.getElementById(`at${i}`)?.classList.toggle('used', i <= loginAttempts);
+  }
+}
+function lockAccount() {
+  const lockUntil = Date.now() + LOCK_DURATION * 1000;
+  localStorage.setItem('ss_lock', lockUntil);
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('login-locked').style.display = 'block';
+  startLockCountdown(lockUntil);
+}
+function checkLockStatus() {
+  const lockUntil = parseInt(localStorage.getItem('ss_lock'));
+  if (!lockUntil) return;
+  if (Date.now() < lockUntil) {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('login-locked').style.display = 'block';
+    startLockCountdown(lockUntil);
+  } else {
+    localStorage.removeItem('ss_lock');
+    loginAttempts = 0;
+  }
+}
+function startLockCountdown(until) {
+  const el = document.getElementById('lock-countdown');
+  function tick() {
+    const remaining = Math.max(0, until - Date.now());
+    const m = Math.floor(remaining / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    if (remaining <= 0) {
+      localStorage.removeItem('ss_lock');
+      loginAttempts = 0;
+      document.getElementById('login-locked').style.display = 'none';
+      document.getElementById('login-form').style.display = 'block';
+      updateAttemptDots();
+      loginPINvalue = '';
+      showLoginStep(1);
+      buildLoginPad();
+    } else {
+      setTimeout(tick, 1000);
+    }
+  }
+  tick();
+}
+
+// ===================== INACTIVITY LOCK =====================
+function resetInactivityTimer() {
+  clearTimeout(STATE.inactivityTimer);
+  STATE.inactivityTimer = setTimeout(() => lockDiary(), INACTIVITY_LIMIT);
+}
+document.addEventListener('mousemove', resetInactivityTimer);
+document.addEventListener('keydown', resetInactivityTimer);
+document.addEventListener('touchstart', resetInactivityTimer);
+
+function lockDiary() {
+  const ds = document.getElementById('diary-screen');
+  ds.classList.remove('active');
+  showLoginScreen();
+}
+
+// ===================== DIARY INIT =====================
+function initDiary() {
+  const user = STATE.user;
+  document.getElementById('sb-name').textContent = user.name;
+  document.getElementById('sb-username').textContent = '@' + user.username;
+  if (user.avatar) {
+    document.getElementById('sb-avatar').innerHTML = `<img src="${user.avatar}">`;
+  }
+  document.getElementById('greeting-name').textContent = user.name.split(' ')[0];
+  document.getElementById('greeting-time').textContent = getGreeting();
+  updateWriteDate();
+  renderHome();
+  renderBadge();
+  startAutosaveTimer();
+  refreshSettingsProfile();
+
+  // Quotes
+  const quotes = [
+    'Every word you write is a step toward understanding yourself.',
+    'Your story matters. Keep writing.',
+    'In the silence of words, you find yourself.',
+    'A diary is a mirror that never lies.',
+    'Write your heart out. The page will always listen.'
+  ];
+  document.getElementById('home-quote').textContent = quotes[Math.floor(Math.random() * quotes.length)];
+}
+
+// ===================== VIEWS =====================
+function switchView(name, navEl) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(`view-${name}`)?.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('topbar-title').textContent = {
+    home:'Home', write:'Write', entries:'All Entries', timeline:'Timeline',
+    search:'Search', analytics:'Analytics', settings:'Settings'
+  }[name] || name;
+  document.getElementById('topbar-search').style.display = name === 'search' ? 'flex' : 'none';
+  closeSidebar();
+
+  if (name === 'write') setupWriteView();
+  if (name === 'entries') renderAllEntries();
+  if (name === 'timeline') renderTimeline();
+  if (name === 'analytics') renderAnalytics();
+  if (name === 'home') renderHome();
+  if (name === 'settings') refreshSettingsProfile();
+}
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('active');
+}
+
+// ===================== WRITE VIEW =====================
+function setupWriteView() {
+  updateWriteDate();
+  if (!STATE.editingId) {
+    // Load draft
+    const draft = localStorage.getItem('ss_draft');
+    if (draft) {
+      const d = JSON.parse(draft);
+      document.getElementById('entry-title').value = d.title || '';
+      document.getElementById('diary-textarea').value = d.body || '';
+      updateWordCount();
+    }
+  }
+}
+function updateWriteDate() {
+  const now = new Date();
+  document.getElementById('write-date-display').textContent = formatDate(now.toISOString());
+}
+function selectWriteMood(emoji) {
+  STATE.currentMood = emoji;
+  document.querySelectorAll('.write-mood-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`wm-${emoji}`)?.classList.add('selected');
+}
+function onWriteInput() {
+  updateWordCount();
+  saveDraft();
+}
+function updateWordCount() {
+  const text = document.getElementById('diary-textarea').value;
+  const words = countWords(text);
+  const chars = text.length;
+  document.getElementById('write-word-count').textContent = `${words} words · ${chars} characters`;
+}
+function insertText(before, after) {
+  const ta = document.getElementById('diary-textarea');
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const selected = ta.value.substring(start, end);
+  ta.value = ta.value.substring(0, start) + before + selected + after + ta.value.substring(end);
+  ta.focus();
+  ta.selectionStart = start + before.length;
+  ta.selectionEnd = start + before.length + selected.length;
+  updateWordCount();
+}
+function insertDate() {
+  const ta = document.getElementById('diary-textarea');
+  const dateStr = `\n[${formatShort(new Date().toISOString())}]\n`;
+  ta.value += dateStr;
+  updateWordCount();
+}
+function clearWrite(silent = false) {
+  if (!silent && !confirm('Clear this draft?')) return;
+  document.getElementById('entry-title').value = '';
+  document.getElementById('diary-textarea').value = '';
+  STATE.editingId = null;
+  STATE.currentMood = '😊';
+  selectWriteMood('😊');
+  localStorage.removeItem('ss_draft');
+  updateWordCount();
+}
+
+// ===================== AUTOSAVE =====================
+let autosaveEnabled = true;
+function toggleAutosave() {
+  autosaveEnabled = !autosaveEnabled;
+  const btn = document.getElementById('autosave-toggle');
+  btn.textContent = `⚡ Autosave ${autosaveEnabled ? 'ON' : 'OFF'}`;
+  btn.classList.toggle('active-tool', autosaveEnabled);
+}
+function startAutosaveTimer() {
+  setInterval(() => { if (autosaveEnabled) saveDraft(); }, 30000);
+}
+function saveDraft() {
+  const title = document.getElementById('entry-title')?.value || '';
+  const body = document.getElementById('diary-textarea')?.value || '';
+  localStorage.setItem('ss_draft', JSON.stringify({ title, body, mood: STATE.currentMood }));
+  const ind = document.getElementById('autosave-indicator');
+  if (ind) { ind.innerHTML = '<div class="autosave-dot"></div><span>Saved ' + new Date().toLocaleTimeString() + '</span>'; }
+}
+
+// ===================== SAVE ENTRY =====================
+function saveEntry() {
+  const title = document.getElementById('entry-title').value.trim();
+  const body = document.getElementById('diary-textarea').value.trim();
+  if (!body) return toast('Write something first ✦','error');
+
+  const now = new Date().toISOString();
+
+  if (STATE.editingId) {
+    const idx = STATE.entries.findIndex(e => e.id === STATE.editingId);
+    if (idx !== -1) {
+      STATE.entries[idx] = { ...STATE.entries[idx], title, body, mood: STATE.currentMood, updatedAt: now };
+    }
+    STATE.editingId = null;
+    toast('Entry updated ✦','success');
+  } else {
+    STATE.entries.unshift({ id: uid(), title: title || 'Untitled', body, mood: STATE.currentMood, createdAt: now, updatedAt: now });
+    toast('Entry saved ✦','success');
+  }
+
+  saveToStorage();
+  localStorage.removeItem('ss_draft');
+  clearWrite(true);
+  renderBadge();
+  renderHome();
+  switchView('home', document.querySelector('.nav-item.active') || document.querySelector('.nav-item'));
+}
+
+// ===================== RENDER HOME =====================
+function renderHome() {
+  const entries = STATE.entries;
+  document.getElementById('stat-entries').textContent = entries.length;
+  const totalWords = entries.reduce((s, e) => s + countWords(e.body), 0);
+  document.getElementById('stat-words').textContent = totalWords > 999 ? (totalWords/1000).toFixed(1)+'k' : totalWords;
+  document.getElementById('stat-streak').textContent = calcStreak();
+  document.getElementById('stat-days').textContent = calcActiveDays();
+
+  const grid = document.getElementById('home-entries');
+  const recent = entries.slice(0, 6);
+  if (recent.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📖</div><div class="empty-title">Your diary awaits</div><div class="empty-sub">Write your first entry to begin your journey</div><button class="btn btn-gold" style="width:auto;padding:12px 28px;margin:0 auto" onclick="switchView('write',null)">Write First Entry</button></div>`;
+  } else {
+    grid.innerHTML = recent.map(e => entryCardHTML(e)).join('');
+  }
+}
+function entryCardHTML(e) {
+  return `<div class="entry-card" onclick="openEntry('${e.id}')">
+    <div class="entry-header">
+      <div class="entry-date">${formatShort(e.createdAt)}</div>
+      <div class="entry-mood-badge">${e.mood||'📝'}</div>
+    </div>
+    <div class="entry-title">${e.title}</div>
+    <div class="entry-preview">${e.body}</div>
+    <div class="entry-footer">
+      <div class="entry-words">${countWords(e.body)} words</div>
+      <div class="entry-actions">
+        <button class="icon-btn" onclick="event.stopPropagation();editEntry('${e.id}')">✏️</button>
+        <button class="icon-btn danger" onclick="event.stopPropagation();promptDelete('${e.id}')">🗑️</button>
+      </div>
+    </div>
+  </div>`;
+}
+function renderBadge() {
+  document.getElementById('entries-badge').textContent = STATE.entries.length;
+}
+
+// ===================== ALL ENTRIES =====================
+function renderAllEntries() {
+  const filterMood = document.getElementById('filter-mood').value;
+  const sort = document.getElementById('sort-entries').value;
+  let entries = [...STATE.entries];
+  if (filterMood) entries = entries.filter(e => e.mood === filterMood);
+  if (sort === 'oldest') entries.sort((a,b) => new Date(a.createdAt)-new Date(b.createdAt));
+  else if (sort === 'longest') entries.sort((a,b) => countWords(b.body)-countWords(a.body));
+  const grid = document.getElementById('all-entries-grid');
+  if (entries.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div class="empty-title">Nothing here yet</div></div>`;
+  } else {
+    grid.innerHTML = entries.map(e => entryCardHTML(e)).join('');
+  }
+}
+
+// ===================== TIMELINE =====================
+function renderTimeline() {
+  const entries = [...STATE.entries].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  const groups = {};
+  entries.forEach(e => {
+    const d = new Date(e.createdAt);
+    const key = d.toLocaleDateString('en-US', { month:'long', year:'numeric' });
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+  let html = '';
+  for (const [month, items] of Object.entries(groups)) {
+    html += `<div class="timeline-group"><div class="timeline-month">✦ ${month}</div>`;
+    items.forEach((e, i) => {
+      html += `<div class="timeline-item" onclick="openEntry('${e.id}')">
+        <div class="timeline-dot-col">
+          <div class="timeline-dot"></div>
+          ${i < items.length-1 ? '<div class="timeline-line"></div>' : ''}
+        </div>
+        <div class="timeline-content">
+          <div class="timeline-day">${e.mood||'📝'} ${formatShort(e.createdAt)}</div>
+          <div class="timeline-title">${e.title}</div>
+          <div class="timeline-preview">${e.body.substring(0, 80)}${e.body.length > 80 ? '…' : ''}</div>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+  if (!html) html = `<div class="empty-state"><div class="empty-icon">🕰️</div><div class="empty-title">No timeline yet</div><div class="empty-sub">Start writing to build your story</div></div>`;
+  document.getElementById('timeline-content').innerHTML = html;
+}
+
+// ===================== SEARCH =====================
+function handleSearch(query) {
+  const q = query.toLowerCase().trim();
+  const results = q ? STATE.entries.filter(e => e.title.toLowerCase().includes(q) || e.body.toLowerCase().includes(q)) : [];
+  const grid = document.getElementById('search-results');
+  const empty = document.getElementById('search-empty');
+  if (!q) { grid.innerHTML = ''; empty.style.display = 'none'; return; }
+  if (results.length === 0) { grid.innerHTML = ''; empty.style.display = 'block'; }
+  else { empty.style.display = 'none'; grid.innerHTML = results.map(e => entryCardHTML(e)).join(''); }
+}
+
+// ===================== ANALYTICS =====================
+function calcStreak() {
+  const dates = STATE.entries.map(e => new Date(e.createdAt).toDateString());
+  const unique = [...new Set(dates)].sort((a,b) => new Date(b)-new Date(a));
+  let streak = 0;
+  let current = new Date();
+  for (const d of unique) {
+    const diff = Math.round((current - new Date(d)) / 86400000);
+    if (diff <= 1) { streak++; current = new Date(d); }
+    else break;
+  }
+  return streak;
+}
+function calcActiveDays() {
+  const dates = STATE.entries.map(e => new Date(e.createdAt).toDateString());
+  return new Set(dates).size;
+}
+function renderAnalytics() {
+  const entries = STATE.entries;
+  const streak = calcStreak();
+  document.getElementById('analytics-streak').textContent = streak;
+  document.getElementById('best-streak-label').textContent = `Best: ${streak} days`;
+
+  // Mood chart
+  const moodCounts = {};
+  entries.forEach(e => { if (e.mood) moodCounts[e.mood] = (moodCounts[e.mood]||0)+1; });
+  const moods = ['😊','😢','😤','😌','🤩','😰','🥱'];
+  const max = Math.max(...moods.map(m => moodCounts[m]||0), 1);
+  const moodChart = document.getElementById('mood-chart');
+  moodChart.innerHTML = moods.map(m => `
+    <div class="mood-bar-wrap">
+      <div class="mood-bar" style="height:${((moodCounts[m]||0)/max*80+4)}px"></div>
+      <div class="mood-bar-label">${m}</div>
+      <div class="mood-bar-count">${moodCounts[m]||0}</div>
+    </div>`).join('');
+
+  // Avg words
+  const avgWords = entries.length ? Math.round(entries.reduce((s,e) => s+countWords(e.body),0)/entries.length) : 0;
+  document.getElementById('avg-words').textContent = avgWords;
+
+  // Heatmap
+  const heatmap = document.getElementById('heatmap');
+  const cells = [];
+  for (let i=48;i>=0;i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const ds = d.toDateString();
+    const count = entries.filter(e => new Date(e.createdAt).toDateString() === ds).length;
+    let level = count === 0 ? '' : count === 1 ? 'l1' : count === 2 ? 'l2' : count <= 4 ? 'l3' : 'l4';
+    cells.push(`<div class="heat-cell ${level}" title="${ds}: ${count} entries"></div>`);
+  }
+  heatmap.innerHTML = cells.join('');
+
+  // Top days
+  const dayWordMap = {};
+  entries.forEach(e => {
+    const ds = formatShort(e.createdAt);
+    dayWordMap[ds] = (dayWordMap[ds]||0) + countWords(e.body);
+  });
+  const topDays = Object.entries(dayWordMap).sort((a,b) => b[1]-a[1]).slice(0,4);
+  document.getElementById('top-days').innerHTML = topDays.length
+    ? topDays.map(([d,w]) => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--glass-border);font-size:13px"><span style="color:var(--text-muted)">${d}</span><span style="color:var(--gold)">${w} words</span></div>`).join('')
+    : '<div style="color:var(--text-dim);font-size:13px;padding:8px 0">No data yet</div>';
+}
+
+// ===================== OPEN / EDIT / DELETE ENTRY =====================
+function openEntry(id) {
+  const e = STATE.entries.find(e => e.id === id);
+  if (!e) return;
+  currentReadId = id;
+  document.getElementById('modal-date').textContent = formatDate(e.createdAt);
+  document.getElementById('modal-title').textContent = e.title;
+  document.getElementById('modal-mood').textContent = e.mood || '📝';
+  document.getElementById('modal-body').textContent = e.body;
+  openModal('read-modal');
+}
+function editEntry(id) {
+  const e = STATE.entries.find(e => e.id === id);
+  if (!e) return;
+  closeModal('read-modal');
+  STATE.editingId = id;
+  document.getElementById('entry-title').value = e.title;
+  document.getElementById('diary-textarea').value = e.body;
+  selectWriteMood(e.mood || '😊');
+  updateWordCount();
+  switchView('write', null);
+}
+function promptDelete(id) {
+  deleteTargetId = id;
+  openModal('delete-modal');
+}
+function deleteEntry(id) {
+  deleteTargetId = id;
+  closeModal('read-modal');
+  openModal('delete-modal');
+}
+function confirmDelete() {
+  STATE.entries = STATE.entries.filter(e => e.id !== deleteTargetId);
+  saveToStorage();
+  renderHome();
+  renderBadge();
+  closeModal('delete-modal');
+  toast('Entry deleted','info');
+  renderAllEntries();
+}
+function confirmDeleteAll() {
+  if (!confirm('Delete ALL diary entries permanently? This cannot be undone.')) return;
+  STATE.entries = [];
+  saveToStorage();
+  renderHome();
+  renderBadge();
+  toast('All entries deleted','info');
+}
+
+// ===================== MOOD (HOME) =====================
+function setTodayMood(emoji, label) {
+  document.querySelectorAll('#home-mood-row .mood-btn').forEach(b => b.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  STATE.currentMood = emoji;
+  toast(`Mood set: ${emoji} ${label}`, 'success');
+}
+
+// ===================== VOICE TO TEXT =====================
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    return toast('Voice input not supported in this browser', 'error');
+  }
+  if (STATE.isListening) {
+    STATE.recognition.stop();
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  STATE.recognition = new SR();
+  STATE.recognition.continuous = true;
+  STATE.recognition.interimResults = true;
+  STATE.recognition.lang = 'en-IN';
+  STATE.recognition.onstart = () => {
+    STATE.isListening = true;
+    document.getElementById('voice-btn').classList.add('recording');
+    toast('🎤 Listening...', 'info');
+  };
+  STATE.recognition.onresult = (event) => {
+    let transcript = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      transcript += event.results[i][0].transcript;
+    }
+    const ta = document.getElementById('diary-textarea');
+    const base = ta.dataset.voiceBase || ta.value;
+    ta.value = base + transcript;
+    ta.dataset.voiceBase = base;
+    updateWordCount();
+  };
+  STATE.recognition.onend = () => {
+    STATE.isListening = false;
+    document.getElementById('voice-btn').classList.remove('recording');
+    delete document.getElementById('diary-textarea').dataset.voiceBase;
+    toast('Voice input stopped', 'info');
+  };
+  STATE.recognition.onerror = () => {
+    STATE.isListening = false;
+    document.getElementById('voice-btn').classList.remove('recording');
+    toast('Voice recognition error', 'error');
+  };
+  STATE.recognition.start();
+}
+
+// ===================== EXPORT PDF =====================
+async function exportEntryPDF(id) {
+  const e = STATE.entries.find(e => e.id === id);
+  if (!e) return;
+  closeModal('read-modal');
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFont('helvetica');
+    doc.setFontSize(20);
+    doc.setTextColor(201, 168, 76);
+    doc.text('SOULSCRIPT', 105, 20, { align: 'center' });
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text(formatDate(e.createdAt), 105, 30, { align: 'center' });
+    doc.setFontSize(18);
+    doc.setTextColor(30, 30, 30);
+    doc.text(e.title, 20, 50);
+    doc.setFontSize(12);
+    doc.setTextColor(50, 50, 50);
+    const lines = doc.splitTextToSize(e.body, 170);
+    doc.text(lines, 20, 65);
+    doc.save(`SoulScript_${e.title.replace(/\s+/g,'_')}.pdf`);
+    toast('PDF exported ✦','success');
+  } catch { toast('PDF export failed','error'); }
+}
+
+async function exportAllPDF() {
+  if (!STATE.entries.length) return toast('No entries to export','error');
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFont('helvetica');
+    doc.setFontSize(28);
+    doc.setTextColor(201,168,76);
+    doc.text('SOULSCRIPT', 105, 40, { align:'center' });
+    doc.setFontSize(14);
+    doc.setTextColor(120,120,120);
+    doc.text(`${STATE.user?.name || ''} · ${STATE.entries.length} Entries`, 105, 55, { align:'center' });
+    STATE.entries.forEach((e, i) => {
+      doc.addPage();
+      doc.setFontSize(10);
+      doc.setTextColor(201,168,76);
+      doc.text(formatShort(e.createdAt) + ' · ' + (e.mood||''), 20, 20);
+      doc.setFontSize(16);
+      doc.setTextColor(30,30,30);
+      doc.text(e.title, 20, 32);
+      doc.setFontSize(11);
+      doc.setTextColor(60,60,60);
+      const lines = doc.splitTextToSize(e.body, 170);
+      doc.text(lines, 20, 44);
+    });
+    doc.save(`SoulScript_Complete_Diary.pdf`);
+    toast('All entries exported ✦','success');
+  } catch { toast('Export failed','error'); }
+}
+
+// ===================== BACKUP =====================
+function backupData() {
+  const data = JSON.stringify({ user: STATE.user, entries: STATE.entries }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'SoulScript_Backup.json'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded ✦','success');
+}
+
+// ===================== NOTIFICATIONS =====================
+function toggleReminder(toggle) {
+  toggle.classList.toggle('on');
+  if (toggle.classList.contains('on')) {
+    if ('Notification' in window) {
+      Notification.requestPermission().then(p => {
+        if (p === 'granted') toast('Daily reminders enabled ✦','success');
+        else { toggle.classList.remove('on'); toast('Notification permission denied','error'); }
+      });
+    }
+  }
+}
+
+// ===================== EDIT PROFILE =====================
+let editAvatarData = null;
+
+function openEditProfileModal() {
+  const user = STATE.user;
+  document.getElementById('ep-name').value = user.name || '';
+  document.getElementById('ep-username').value = user.username || '';
+  // Reset avatar preview
+  editAvatarData = null;
+  const prev = document.getElementById('ep-avatar-preview');
+  if (user.avatar) {
+    prev.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    prev.innerHTML = '👤';
+  }
+  document.getElementById('ep-avatar-upload-text').textContent = 'Click to change photo';
+  document.getElementById('ep-avatar-upload-box').classList.remove('has-file');
+  openModal('edit-profile-modal');
+}
+
+function previewEditAvatar(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    editAvatarData = reader.result;
+    const prev = document.getElementById('ep-avatar-preview');
+    prev.innerHTML = `<img src="${editAvatarData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    document.getElementById('ep-avatar-upload-text').textContent = '✅ ' + file.name;
+    document.getElementById('ep-avatar-upload-box').classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveProfile() {
+  const name = document.getElementById('ep-name').value.trim();
+  const username = document.getElementById('ep-username').value.trim();
+  if (!name) return toast('Name cannot be empty','error');
+  if (!username) return toast('Username cannot be empty','error');
+
+  // Update user object
+  const user = decryptData(localStorage.getItem('ss_user'));
+  user.name = name;
+  user.username = username;
+  if (editAvatarData) user.avatar = editAvatarData;
+
+  localStorage.setItem('ss_user', encryptData(user));
+  STATE.user = user;
+
+  // Refresh all UI that shows name/username/avatar
+  document.getElementById('sb-name').textContent = name;
+  document.getElementById('sb-username').textContent = '@' + username;
+  document.getElementById('greeting-name').textContent = name.split(' ')[0];
+  if (user.avatar) {
+    document.getElementById('sb-avatar').innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+  refreshSettingsProfile();
+  closeModal('edit-profile-modal');
+  toast('Profile updated ✦','success');
+}
+
+function refreshSettingsProfile() {
+  const user = STATE.user;
+  if (!user) return;
+  document.getElementById('settings-name-display').textContent = user.name || '—';
+  document.getElementById('settings-username-display').textContent = '@' + (user.username || '—');
+  const sa = document.getElementById('settings-avatar');
+  if (user.avatar) {
+    sa.innerHTML = `<img src="${user.avatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    sa.innerHTML = '👤';
+  }
+}
+
+// ===================== DELETE ACCOUNT =====================
+let deleteAccountPIN = '';
+
+function openDeleteAccountModal() {
+  deleteAccountPIN = '';
+  document.getElementById('da-error').textContent = '';
+  updateDeleteAccountDots();
+  buildPinPad('pinpad-deleteaccount', (k) => {
+    if (k === '⌫') { deleteAccountPIN = deleteAccountPIN.slice(0,-1); }
+    else if (k === '✓') { executeDeleteAccount(); return; }
+    else if (deleteAccountPIN.length < 4) deleteAccountPIN += k;
+    updateDeleteAccountDots();
+  });
+  openModal('delete-account-modal');
+}
+
+function updateDeleteAccountDots() {
+  for (let i=1;i<=4;i++) {
+    document.getElementById(`da-d${i}`)?.classList.toggle('filled', i <= deleteAccountPIN.length);
+  }
+}
+
+function executeDeleteAccount() {
+  const user = decryptData(localStorage.getItem('ss_user'));
+  if (deleteAccountPIN !== user.pin) {
+    document.getElementById('da-error').textContent = '❌ Wrong PIN. Account not deleted.';
+    deleteAccountPIN = '';
+    updateDeleteAccountDots();
+    return;
+  }
+  // Wipe everything
+  localStorage.removeItem('ss_user');
+  localStorage.removeItem('ss_entries');
+  localStorage.removeItem('ss_draft');
+  localStorage.removeItem('ss_lock');
+  STATE.user = null;
+  STATE.entries = [];
+  closeModal('delete-account-modal');
+  // Close diary screen, go to signup
+  document.getElementById('diary-screen').classList.remove('active');
+  document.getElementById('signup-screen').classList.add('active');
+  // Reset signup form
+  document.getElementById('signup-step1').style.display = 'block';
+  document.getElementById('signup-step2').style.display = 'none';
+  setupPINvalue = '';
+  buildSetupPad();
+  toast('Account permanently deleted. Goodbye. 🕯️','info');
+}
+
+// ===================== CHANGE PIN MODAL =====================
+function showChangePinModal() {
+  const newPin = prompt('Enter new 4-digit PIN:');
+  if (!newPin || !/^\d{4}$/.test(newPin)) return toast('Invalid PIN — must be 4 digits','error');
+  const user = decryptData(localStorage.getItem('ss_user'));
+  user.pin = newPin;
+  STATE.user.pin = newPin;
+  localStorage.setItem('ss_user', encryptData(user));
+  toast('PIN updated ✦','success');
+}
+
+// ===================== BOOT =====================
+window.addEventListener('DOMContentLoaded', () => {
+  const raw = localStorage.getItem('ss_user');
+  if (raw) {
+    showLoginScreen();
+  } else {
+    showScreen('signup-screen');
+    buildSetupPad();
+  }
+  // Check if lock overlay should be shown
+  document.getElementById('lock-overlay').classList.remove('active');
+});
+
+// Sidebar click outside on desktop
+document.addEventListener('click', function(e) {
+  const sidebar = document.getElementById('sidebar');
+  const menuBtn = document.querySelector('.menu-btn');
+  if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(e.target) && !menuBtn?.contains(e.target)) {
+    closeSidebar();
+  }
+});
+</script>
+</body>
+</html>
